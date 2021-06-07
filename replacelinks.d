@@ -59,7 +59,7 @@ string convertLink(Captures!(string) m) {
 
 string replaceLinks(string s) {
 	return replaceAll!(convertLink)(s, regex(`\[#.*?\](?!\()`))
-		.replaceAll(regex(`(^|\s)(#)(.*?)(\s|$)`, "m"), `$1<a href="tag?tagname=$3">#$3</a>`)
+		.replaceAll(regex(`(^|\s)(#)(^[#\s].*?)(\s|$)`, "m"), `$1<a href="tag?tagname=$3">#$3</a>`)
 		.replaceAll(regex(`(?<=^|<br>|\s)(\[ \] )`, "m"), `&#9744; `)
 		.replaceAll(regex(`(?<=^|<br>|\s)(\[x\] )`, "m"), `&#9745; `);
 }

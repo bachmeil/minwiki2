@@ -46,8 +46,8 @@ Element renderPage(string name) {
 }
 
 string mdToHtml(string s, string name) {
-	string mdfile = changeLinks(`<a href="editpage?name=` ~ name ~ `">[Edit This Page]</a> <a href="backlinks?pagename=` ~ name ~ `">[Backlinks]</a><br><br>` ~ "\n\n" ~ s);
-	return mdfile.filterMarkdown(_mdflags);
+	string mdfile = changeLinks(`<a href="editpage?name=` ~ name ~ `">[Edit]</a> <a href="backlinks?pagename=` ~ name ~ `">[Backlinks]</a><br><br>` ~ "\n\n" ~ s);
+	return plaincss ~ mdfile.filterMarkdown(_mdflags);
 }
 
 /*
@@ -70,6 +70,14 @@ void hello(Cgi cgi) {
 		string name = cgi.get["name"];
 		executeShell(_editor ~ " " ~ setExtension(name, "md"));
 		cgi.setResponseLocation("viewpage?name=" ~ name);
+		data = mdToHtml(readText(setExtension(name, "md")), name);
+	}
+	else if (cgi.pathInfo == "/viewpage") {
+		string name = cgi.get["name"];
+		mkdirRecurse(std.path.dirName(name));			
+		if (!exists(setExtension(name, "md"))) {
+			executeShell(_editor ~ " " ~ setExtension(name, "md"));
+		}
 		data = mdToHtml(readText(setExtension(name, "md")), name);
 	}
 	cgi.write(data, true);
