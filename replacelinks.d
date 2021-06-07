@@ -1,6 +1,6 @@
 module minwiki.replacelinks;
 
-import std.conv, std.exception, std.stdio, std.string;
+import std.conv, std.exception, std.regex, std.stdio, std.string;
 
 string findDelimiter(string s, long ind) {
 	string result;
@@ -74,3 +74,6 @@ string changeLinks(string s) {
 	return result;
 }
 
+/*string replaceLinks(string s) {
+
+}*/

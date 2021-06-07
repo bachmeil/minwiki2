@@ -35,8 +35,13 @@ Element toHtml(string s) {
  */
 Element renderPage(string name) {
 	string f = readText(name ~ ".md").strip;
-	string mdfile = changeLinks(`<a href="editpage?name=` ~ name ~ `">[Edit This Page]</a><br><br>` ~ "\n\n" ~ f);
+	string mdfile = changeLinks(`<a href="editpage?name=` ~ name ~ `">[Edit This Page]</a> <a href="backlinks?pagename=` ~ name ~ `" target="_blank">[Backlinks]</a><br><br>` ~ "\n\n" ~ f);
 	return mdfile.filterMarkdown(_mdflags).toHtml();
+}
+
+string mdToHtml(string s, string name) {
+	string mdfile = changeLinks(`<a href="editpage?name=` ~ name ~ `">[Edit This Page]</a> <a href="backlinks?pagename=` ~ name ~ `" target="_blank">[Backlinks]</a><br><br>` ~ "\n\n" ~ s);
+	return mdfile.filterMarkdown(_mdflags);
 }
 
 /*
@@ -72,7 +77,7 @@ class Test: Wikisite {
 	export Element backlinks(string pagename) {
 		string cmd = `grep -Rl '\[#` ~ pagename ~ `\]'`;
 		writeln(cmd);
-		return toHtml("<h1>Backlinks: " ~ pagename ~ "</h1>\n" ~ fileLinks(executeShell(cmd).output));
+		return toHtml(`<h1>Backlinks: <a href="viewpage?name=` ~ pagename ~ `">` ~ pagename ~ "</a></h1>\n" ~ fileLinks(executeShell(cmd).output) ~ "<br><hr>" ~ mdToHtml(readText(pagename ~ ".md"), pagename) ~ "<hr><br><br>");
 	}
 	
 	export Element index() {
