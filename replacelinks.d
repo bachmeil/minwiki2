@@ -21,7 +21,7 @@ string findDelimiter(string s, long ind) {
 	return result;
 }
 
-string replaceLinks(string s) {
+string replaceLinks2(string s) {
 	string result = "";
 	
 	void recurse(long ii) {
@@ -74,6 +74,6 @@ string changeLinks(string s) {
 	return result;
 }
 
-/*string replaceLinks(string s) {
-
-}*/
+string replaceLinks(string s) {
+	return s.replaceAll(regex(`(\[#)(.*?)(\])(?!\()`), `<a href="viewpage?name=$2">$2</a>`).replaceAll(regex(`(^|\s)(#)(.*?)(\s|$)`, "m"), `$1<a href="tag?tagname=$3">#$3</a>`);
+}
