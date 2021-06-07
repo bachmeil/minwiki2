@@ -11,7 +11,7 @@ import std.file, std.path, std.process, std.stdio;
  * an already running editor, you'll have to close that editor
  * before you can continue.
  */
-enum _editor = "geany -i";
+enum _editor = "emacs ";
 
 // Change markdown parsing options here
 MarkdownFlags	_mdflags = MarkdownFlags.backtickCodeBlocks|MarkdownFlags.disableUnderscoreEmphasis;
@@ -66,6 +66,9 @@ class Test: Wikisite {
 	}
 	
 	export Element index() {
+		if (!exists("index.md")) {
+			std.file.write("index.md", "# Index Page\n\nThis is the starting point for your wiki. Click the link above to edit.");
+		}
 		return viewpage("index");
 	}
 }
