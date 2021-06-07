@@ -21,35 +21,6 @@ string findDelimiter(string s, long ind) {
 	return result;
 }
 
-string replaceLinks2(string s) {
-	string result = "";
-	
-	void recurse(long ii) {
-		if (ii >= s.length) {
-			return;
-		}
-		long ind = s.indexOf("[#", ii);
-		if (ind == -1) {
-			result ~= s[ii..$];
-			return;
-		}
-		long ind2 = s.indexOf("]", ind);
-		enforce(ind2 > -1, "Unclosed link. Did you attempt to put a code block inside a link?\n\n" ~ s[ind..$]);
-		result ~= s[ii..ind];
-		string linktext = s[ind+2..ind2];
-		long sep = linktext.indexOf("|");
-		if (sep == -1) {
-			result ~= `<a href="viewpage?name=` ~ linktext.strip ~ `">` ~ linktext.strip ~ `</a>`;
-			return recurse(ind2+1);
-		} else {
-			result ~= `<a href="viewpage?name=` ~ linktext[0..sep].strip ~ `">` ~ linktext[sep+1..$].strip ~ `</a>`;
-			return recurse(ind2+1);
-		}
-	}
-	recurse(0);
-	return result;
-}
-
 string changeLinks(string s) {
 	string result;
 	
@@ -85,13 +56,6 @@ string convertLink(Captures!(string) m) {
 		return `<a href="viewpage?name=` ~ pieces[0][2..$-1].strip ~ `">` ~ pieces[1][0..$-1].strip ~ "</a>";
 	}
 }
-
-/*string replaceLinks(string s) {
-	return s
-		.replaceAll(regex(`(\[#)(^[\]]*?)(\|)(.*?)(\])(?!\()`), `<a href="viewpage4?name=$2">$4</a>`)
-		.replaceAll(regex(`(\[#)(.*?)(\])(?!\()`), `<a href="viewpage?name=$2">$2</a>`)
-		.replaceAll(regex(`(^|\s)(#)(.*?)(\s|$)`, "m"), `$1<a href="tag?tagname=$3">#$3</a>`);
-}*/
 
 string replaceLinks(string s) {
 	return replaceAll!(convertLink)(s, regex(`\[#.*?\](?!\()`))

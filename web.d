@@ -1,5 +1,25 @@
-/// magic web wrapper
+/++
+	Old magic web wrapper - one of my first applications of CT reflection. Given a class of fairly ordinary C code, it automatically creates HTML pages and forms, a Javascript file to access the functions from the client, and JSON based api responses. I do $(I not) recommend it for new projects though, as a replacement is now built into [arsd.cgi].
++/
 module arsd.web;
+
+
+static if(__VERSION__ <= 2076) {
+	// compatibility shims with gdc
+	enum JSONType {
+		object = JSON_TYPE.OBJECT,
+		null_ = JSON_TYPE.NULL,
+		false_ = JSON_TYPE.FALSE,
+		true_ = JSON_TYPE.TRUE,
+		integer = JSON_TYPE.INTEGER,
+		float_ = JSON_TYPE.FLOAT,
+		array = JSON_TYPE.ARRAY,
+		string = JSON_TYPE.STRING,
+		uinteger = JSON_TYPE.UINTEGER
+	}
+}
+
+
 
 // it would be nice to be able to add meta info to a returned envelope
 
@@ -8,6 +28,11 @@ module arsd.web;
 enum RequirePost;
 enum RequireHttps;
 enum NoAutomaticForm;
+
+///
+struct GenericContainerType {
+	string type; ///
+}
 
 /// Attribute for the default formatting (html, table, json, etc)
 struct DefaultFormat {
@@ -204,6 +229,13 @@ string getSiteLink(Cgi cgi) {
 struct Text {
 	string content;
 	alias content this;
+}
+
+///
+struct URL {
+	string url; ///
+	string title; ///
+	alias url this;
 }
 
 /// This is the JSON envelope format
@@ -577,7 +609,7 @@ class ApiProvider : WebDotDBaseType {
 	/// Returns a list of links to all functions in this class or sub-classes
 	/// You can expose it publicly with alias: "alias _sitemap sitemap;" for example.
 	Element _sitemap() {
-		auto container = _getGenericContainer();
+		auto container = Element.make("div", "", "sitemap");
 
 		void writeFunctions(Element list, in ReflectionInfo* reflection, string base) {
 			string[string] handled;
@@ -617,7 +649,7 @@ class ApiProvider : WebDotDBaseType {
 			starting = cgi.logicalScriptName ~ cgi.pathInfo; // FIXME
 		writeFunctions(list, reflection, starting ~ "/");
 
-		return list.parentNode.removeChild(list);
+		return container;
 	}
 
 	/// If the user goes to your program without specifying a path, this function is called.
@@ -626,13 +658,18 @@ class ApiProvider : WebDotDBaseType {
 		throw new Exception("no default");
 	}
 
+	/// forwards to [_getGenericContainer]("default")
+	Element _getGenericContainer() {
+		return _getGenericContainer("default");
+	}
+
 	/// When the html document envelope is used, this function is used to get a html element
 	/// where the return value is appended.
 
 	/// It's the main function to override to provide custom HTML templates.
 	///
 	/// The default document provides a default stylesheet, our default javascript, and some timezone cookie handling (which you must handle on the server. Eventually I'll open source my date-time helpers that do this, but the basic idea is it sends an hour offset, and you can add that to any UTC time you have to get a local time).
-	Element _getGenericContainer()
+	Element _getGenericContainer(string containerName)
 	out(ret) {
 		assert(ret !is null);
 	}
@@ -654,41 +691,10 @@ class ApiProvider : WebDotDBaseType {
 	<style>
 		.format-row { display: none; }
 		.validation-failed { background-color: #ffe0e0; }
-
-body {
-    margin: auto;
-    max-width: 800px;
-    font-size: 120%;
-    margin-top: 20px;
-}
-
-a {
-    text-decoration: none;
-}
-
-pre > code {
-  padding: .2rem .5rem;
-  margin: 0 .2rem;
-  font-size: 90%;
-  white-space: nowrap;
-  background: #F1F1F1;
-  border: 1px solid #E1E1E1;
-  border-radius: 4px; 
-  display: block;
-  padding: 1rem 1.5rem;
-  white-space: pre; 
-}
-
-h1, h2, h3 {
-	font-family: sans;
-	font-size: 140%;
-}
-
 	</style>
 </head>
 <body>
 	<div id=\"body\"></div>
-	<a href=\"index\">[Index]</a>
 	<script id=\"webd-functions-js\" src=\"functions.js?"~compiliationStamp~"\"></script>
 	" ~ deqFoot ~ "
 </body>
@@ -773,6 +779,8 @@ class DataFile : FileResource {
 		return _contentType;
 	}
 
+	@property string filename() const { return null; }
+
 	immutable(ubyte)[] getData() const {
 		return cast(immutable(ubyte)[]) _content;
 	}
@@ -797,7 +805,7 @@ struct ReflectionInfo {
 
 	// these might go away.
 
-	string defaultOutputFormat = "html";
+	string defaultOutputFormat = "default";
 	int versionOfOutputFormat = 2; // change this in your constructor if you still need the (deprecated) old behavior
 	// bool apiMode = false; // no longer used - if format is json, apiMode behavior is assumed. if format is html, it is not.
 				// FIXME: what if you want the data formatted server side, but still in a json envelope?
@@ -845,6 +853,8 @@ struct FunctionInfo {
 	bool returnTypeIsElement; // internal used when wrapping
 
 	bool requireHttps;
+
+	string genericContainerType = "default";
 
 	Document delegate(in string[string] args) createForm; /// This is used if you want a custom form - normally, on insufficient parameters, an automatic form is created. But if there's a functionName_Form method, it is used instead. FIXME: this used to work but not sure if it still does
 }
@@ -1031,6 +1041,8 @@ immutable(ReflectionInfo*) prepareReflectionImpl(alias PM, alias Parent)(Parent 
 			f.returnType = ReturnType!(__traits(getMember, Class, member)).stringof;
 			f.returnTypeIsDocument = is(ReturnType!(__traits(getMember, Class, member)) : Document);
 			f.returnTypeIsElement = is(ReturnType!(__traits(getMember, Class, member)) : Element);
+			static if(hasValueAnnotation!(__traits(getMember, Class, member), GenericContainerType))
+				f.genericContainerType = getAnnotation!(__traits(getMember, Class, member), GenericContainerType).type;
 
 			f.parentObject = reflection;
 
@@ -1495,8 +1507,9 @@ void run(Provider)(Cgi cgi, Provider instantiation, size_t pathInfoStartingPoint
 					}
 					auto code = Element.make("div");
 					code.addClass("exception-error-message");
-					code.addChild("p", e.msg);
-					debug code.addChild("pre", e.toString());
+					import arsd.characterencodings;
+					code.addChild("p", convertToUtf8Lossy(cast(immutable(ubyte)[]) e.msg, "utf8"));
+					debug code.addChild("pre", convertToUtf8Lossy(cast(immutable(ubyte)[]) e.toString(), "utf8"));
 
 					result.result.str = (code.toString());
 				}
@@ -1564,7 +1577,7 @@ void run(Provider)(Cgi cgi, Provider instantiation, size_t pathInfoStartingPoint
 				cgi.setResponseContentType("text/csv");
 				cgi.header("Content-Disposition: attachment; filename=\"export.csv\"");
 
-				if(result.result.type == JSON_TYPE.STRING) {
+				if(result.result.type == JSONType.string) {
 					cgi.write(result.result.str, true);
 				} else assert(0);
 			break;
@@ -1575,7 +1588,7 @@ void run(Provider)(Cgi cgi, Provider instantiation, size_t pathInfoStartingPoint
 				cgi.setResponseContentType("text/plain");
 
 				if(result.success) {
-					if(result.result.type == JSON_TYPE.STRING) {
+					if(result.result.type == JSONType.string) {
 						cgi.write(result.result.str, true);
 					} else {
 						cgi.write(toJSON(result.result), true);
@@ -1589,7 +1602,7 @@ void run(Provider)(Cgi cgi, Provider instantiation, size_t pathInfoStartingPoint
 			default:
 				cgi.setResponseContentType("text/html; charset=utf-8");
 
-				if(result.result.type == JSON_TYPE.STRING) {
+				if(result.result.type == JSONType.string) {
 					auto returned = result.result.str;
 
 					if(envelopeFormat != "html") {
@@ -1603,9 +1616,9 @@ void run(Provider)(Cgi cgi, Provider instantiation, size_t pathInfoStartingPoint
 							Element e;
 							auto hack = cast(ApiProvider) realObject;
 							if(hack !is null)
-								e = hack._getGenericContainer();
+								e = hack._getGenericContainer(fun is null ? "default" : fun.genericContainerType);
 							else
-								e = instantiation._getGenericContainer();
+								e = instantiation._getGenericContainer(fun is null ? "default" : fun.genericContainerType);
 
 
 							document = e.parentDocument;
@@ -1752,22 +1765,21 @@ mixin template CustomCgiFancyMain(CustomCgi, T, Args...) if(is(CustomCgi : Cgi))
 		instantiation.cgi = cgi;
 		auto reflection = prepareReflection!(T)(instantiation);
 
-		/* Changed by Lance */
-		//~ version(no_automatic_session) {}
-		//~ else {
-			//~ auto session = new Session(cgi);
-			//~ version(webd_cookie_sessions) { } // cookies have to be outputted before here since they are headers
-			//~ else {
-				//~ scope(exit) {
-					//~ // I only commit automatically on non-bots to avoid writing too many files
-					//~ // looking for bot should catch most them without false positives...
-					//~ // empty user agent is prolly a tester too so i'll let that slide
-					//~ if(cgi.userAgent.length && cgi.userAgent.toLower.indexOf("bot") == -1)
-						//~ session.commit();
-				//~ }
-			//~ }
-			//~ instantiation.session = session;
-		//~ }
+		version(no_automatic_session) {}
+		else {
+			auto session = new Session(cgi);
+			version(webd_cookie_sessions) { } // cookies have to be outputted before here since they are headers
+			else {
+				scope(exit) {
+					// I only commit automatically on non-bots to avoid writing too many files
+					// looking for bot should catch most them without false positives...
+					// empty user agent is prolly a tester too so i'll let that slide
+					if(cgi.userAgent.length && cgi.userAgent.toLower.indexOf("bot") == -1)
+						session.commit();
+				}
+			}
+			instantiation.session = session;
+		}
 
 		version(webd_cookie_sessions)
 			run(cgi, instantiation, instantiation.pathInfoStartingPoint, true, session);
@@ -1912,6 +1924,7 @@ Form createAutomaticForm(Document document, string action, in Parameter[] parame
 
 	auto fmt = Element.make("select");
 	fmt.name = "format";
+	fmt.addChild("option", "Automatic").setAttribute("value", "default");
 	fmt.addChild("option", "html").setAttribute("value", "html");
 	fmt.addChild("option", "table").setAttribute("value", "table");
 	fmt.addChild("option", "json").setAttribute("value", "json");
@@ -2117,8 +2130,10 @@ string toHtml(T)(T a) {
 		static if(__traits(compiles, typeof(a[0]).makeHtmlArray(a))) {
 			ret = to!string(typeof(a[0]).makeHtmlArray(a));
 		} else {
+			ret ~= "<ul>";
 			foreach(v; a)
-				ret ~= toHtml(v);
+				ret ~= "<li>" ~ toHtml(v) ~ "</li>";
+			ret ~= "</ul>";
 		}
 	} else static if(is(T : Element))
 		ret = a.toString();
@@ -2163,7 +2178,7 @@ JSONValue toJsonValue(T, R = ApiProvider)(T a, string formatToStringAs = null, R
 	static if(is(T == typeof(null)) || is(T == void*)) {
 		/* void* goes here too because we don't know how to make it work... */
 		val.object = null;
-		//val.type = JSON_TYPE.NULL;
+		//val.type = JSONType.null_;
 	} else static if(is(T == JSONValue)) {
 		val = a;
 	} else static if(__traits(compiles, val = a.makeJsonValue())) {
@@ -2172,57 +2187,57 @@ JSONValue toJsonValue(T, R = ApiProvider)(T a, string formatToStringAs = null, R
 
 	// FIXME: should we special case something like struct Html?
 	} else static if(is(T : DateTime)) {
-		//val.type = JSON_TYPE.STRING;
+		//val.type = JSONType.string;
 		val.str = a.toISOExtString();
 	} else static if(is(T : Element)) {
 		if(a is null) {
-			//val.type = JSON_TYPE.NULL;
+			//val.type = JSONType.null_;
 			val = null;
 		} else {
-			//val.type = JSON_TYPE.STRING;
+			//val.type = JSONType.string;
 			val.str = a.toString();
 		}
 	} else static if(is(T == long)) {
 		// FIXME: let's get a better range... I think it goes up to like 1 << 50 on positive and negative
 		// but this works for now
 		if(a < int.max && a > int.min) {
-			//val.type = JSON_TYPE.INTEGER;
+			//val.type = JSONType.integer;
 			val.integer = to!long(a);
 		} else {
 			// WHY? because javascript can't actually store all 64 bit numbers correctly
-			//val.type = JSON_TYPE.STRING;
+			//val.type = JSONType.string;
 			val.str = to!string(a);
 		}
 	} else static if(isIntegral!(T)) {
-		//val.type = JSON_TYPE.INTEGER;
+		//val.type = JSONType.integer;
 		val.integer = to!long(a);
 	} else static if(isFloatingPoint!(T)) {
-		//val.type = JSON_TYPE.FLOAT;
+		//val.type = JSONType.float_;
 		val.floating = to!real(a);
 	} else static if(isPointer!(T)) {
 		if(a is null) {
-			//val.type = JSON_TYPE.NULL;
+			//val.type = JSONType.null_;
 			val = null;
 		} else {
 			val = toJsonValue!(typeof(*a), R)(*a, formatToStringAs, api);
 		}
 	} else static if(is(T == bool)) {
 		if(a == true)
-			val = true; // .type = JSON_TYPE.TRUE;
+			val = true; // .type = JSONType.true_;
 		if(a == false)
-			val = false; // .type = JSON_TYPE.FALSE;
+			val = false; // .type = JSONType.false_;
 	} else static if(isSomeString!(T)) {
-		//val.type = JSON_TYPE.STRING;
+		//val.type = JSONType.string;
 		val.str = to!string(a);
 	} else static if(isAssociativeArray!(T)) {
-		//val.type = JSON_TYPE.OBJECT;
+		//val.type = JSONType.object;
 		JSONValue[string] valo;
 		foreach(k, v; a) {
 			valo[to!string(k)] = toJsonValue!(typeof(v), R)(v, formatToStringAs, api);
 		}
 		val = valo;
 	} else static if(isArray!(T)) {
-		//val.type = JSON_TYPE.ARRAY;
+		//val.type = JSONType.array;
 		JSONValue[] arr;
 		arr.length = a.length;
 		foreach(i, v; a) {
@@ -2231,7 +2246,7 @@ JSONValue toJsonValue(T, R = ApiProvider)(T a, string formatToStringAs = null, R
 
 		val.array = arr;
 	} else static if(is(T == struct)) { // also can do all members of a struct...
-		//val.type = JSON_TYPE.OBJECT;
+		//val.type = JSONType.object;
 
 		JSONValue[string] valo;
 
@@ -2244,20 +2259,20 @@ JSONValue toJsonValue(T, R = ApiProvider)(T a, string formatToStringAs = null, R
 			//static if(__traits(compiles, __traits(getMember, a, member)))
 		val = valo;
 	} else { /* our catch all is to just do strings */
-		//val.type = JSON_TYPE.STRING;
+		//val.type = JSONType.string;
 		val.str = to!string(a);
 		// FIXME: handle enums
 	}
 
 
 	// don't want json because it could recurse
-	if(val.type == JSON_TYPE.OBJECT && formatToStringAs !is null && formatToStringAs != "json") {
+	if(val.type == JSONType.object && formatToStringAs !is null && formatToStringAs != "json") {
 		JSONValue formatted;
-		//formatted.type = JSON_TYPE.STRING;
+		//formatted.type = JSONType.string;
 		formatted.str = "";
 
 		formatAs!(T, R)(a, formatToStringAs, api, &formatted, null /* only doing one level of special formatting */);
-		assert(formatted.type == JSON_TYPE.STRING);
+		assert(formatted.type == JSONType.string);
 		val.object["formattedSecondarily"] = formatted;
 	}
 
@@ -2542,7 +2557,7 @@ class NoSuchFunctionException : NoSuchPageException {
 type fromUrlParam(type)(in string ofInterest, in string name, in string[][string] all) {
 	type ret;
 
-	static if(isArray!(type) && !isSomeString!(type)) {
+	static if(!is(type == enum) && isArray!(type) && !isSomeString!(type)) {
 		// how do we get an array out of a simple string?
 		// FIXME
 		static assert(0);
@@ -2570,6 +2585,17 @@ type fromUrlParam(type)(in string ofInterest, in string name, in string[][string
 			if(lol in all)
 				ret.tupleof[idx] = fromUrlParam!(typeof(thing))(all[lol], lol, all);
 		}
+	} else static if(is(type == enum)) {
+		sw: switch(ofInterest) {
+			/*static*/ foreach(N; __traits(allMembers, type)) {
+			case N:
+				ret = __traits(getMember, type, N);
+				break sw;
+			}
+			default:
+				throw new InvalidParameterException(name, ofInterest, "");
+		}
+
 	}
 	/*
 	else static if(is(type : struct)) {
@@ -2577,7 +2603,6 @@ type fromUrlParam(type)(in string ofInterest, in string name, in string[][string
 	}
 	*/
 	else {
-		// enum should be handled by this too
 		ret = to!type(ofInterest);
 	} // FIXME: can we support classes?
 
@@ -2589,7 +2614,7 @@ type fromUrlParam(type)(in string[] ofInterest, in string name, in string[][stri
 	type ret;
 
 	// Arrays in a query string are sent as the name repeating...
-	static if(isArray!(type) && !isSomeString!type) {
+	static if(!is(type == enum) && isArray!(type) && !isSomeString!type) {
 		foreach(a; ofInterest) {
 			ret ~= fromUrlParam!(ElementType!(type))(a, name, all);
 		}
@@ -2618,7 +2643,7 @@ WrapperFunction generateWrapper(alias ObjectType, string funName, alias f, R)(Re
 
 		JSONValue returnValue;
 		returnValue.str = "";
-		//returnValue.type = JSON_TYPE.STRING;
+		//returnValue.type = JSONType.string;
 
 		auto instantiation = getMemberDelegate!(ObjectType, funName)(cast(ObjectType) object);
 
@@ -2772,6 +2797,20 @@ WrapperFunction generateWrapper(alias ObjectType, string funName, alias f, R)(Re
 
 // FIXME: it's awkward to call manually due to the JSONValue ref thing. Returning a string would be mega nice.
 string formatAs(T, R)(T ret, string format, R api = null, JSONValue* returnValue = null, string formatJsonToStringAs = null) if(is(R : ApiProvider)) {
+
+	if(format == "default") {
+		static if(is(typeof(ret) : K[N][V], size_t N, K, V)) {
+			format = "table";
+		} else {
+			format = "html";
+		}
+
+		static if(is(typeof(ret) : K[], K)) {
+			static if(is(K == struct))
+				format = "table";
+		}
+	}
+
 	string retstr;
 	if(api !is null) {
 		static if(__traits(compiles, api._customFormat(ret, format))) {
@@ -2814,9 +2853,15 @@ string formatAs(T, R)(T ret, string format, R api = null, JSONValue* returnValue
 			void gotATable(Table table) {
 				if(format == "csv") {
 					retstr = tableToCsv(table);
-				} else if(format == "table")
-					retstr = table.toString();
-				else assert(0);
+				} else if(format == "table") {
+					auto div = Element.make("div");
+					if(api !is null) {
+						auto cgi = api.cgi;
+						div.addChild("a", "Download as CSV", cgi.pathInfo ~ "?" ~ cgi.queryString ~ "&format=csv&envelopeFormat=csv");
+					}
+					div.appendChild(table);
+					retstr = div.toString();
+				} else assert(0);
 
 
 				if(returnValue !is null)
@@ -2834,8 +2879,21 @@ string formatAs(T, R)(T ret, string format, R api = null, JSONValue* returnValue
 					goto badType;
 				gotATable(table);
 				break;
-			}
-			else
+			} else static if(is(typeof(ret) : K[N][V], size_t N, K, V)) {
+				auto table = cast(Table) Element.make("table");
+				table.addClass("data-display");
+				auto headerRow = table.addChild("tr");
+				foreach(n; 0 .. N)
+					table.addChild("th", "" ~ cast(char)(n  + 'A'));
+				foreach(k, v; ret) {
+					auto row = table.addChild("tr");
+					foreach(cell; v)
+						row.addChild("td", to!string(cell));
+				}
+				gotATable(table);
+				break;
+
+			} else
 				goto badType;
 		default:
 			badType:
@@ -2862,7 +2920,16 @@ string tableToCsv(Table table) {
 			else
 				outputted = true;
 
-			csv ~= toCsv(item.innerText);
+			if(item.firstChild && item.firstChild.tagName == "ul") {
+				string c;
+				foreach(i, node; item.firstChild.childNodes) {
+					if(c.length) c ~= "; ";
+					c ~= node.innerText;
+				}
+				csv ~= toCsv(c);
+			} else {
+				csv ~= toCsv(item.innerText);
+			}
 		}
 	}
 
@@ -2926,6 +2993,9 @@ string toUrlName(string name) {
 string beautify(string name) {
 	string n;
 
+	// really if this is cap and the following is lower, we want a space.
+	// or in other words, if this is lower and previous is cap, we want a space injected before previous
+
 				// all caps names shouldn't get spaces
 	if(name.length == 0 || name.toUpper() == name)
 		return name;
@@ -2933,8 +3003,11 @@ string beautify(string name) {
 	n ~= toUpper(name[0..1]);
 
 	dchar last;
-	foreach(dchar c; name[1..$]) {
-		if((c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')) {
+	foreach(idx, dchar c; name[1..$]) {
+		if(c >= 'A' && c <= 'Z') {
+			if(idx + 1 < name[1 .. $].length && name[1 + idx + 1] >= 'a' && name[1 + idx + 1] <= 'z')
+				n ~= " ";
+		} else if(c >= '0' && c <= '9') {
 			if(last != ' ')
 				n ~= " ";
 		}
@@ -3327,33 +3400,33 @@ class Session {
 	private static string[string] loadDataFromJson(string json) {
 		string[string] data = null;
 		auto obj = parseJSON(json);
-		enforce(obj.type == JSON_TYPE.OBJECT);
+		enforce(obj.type == JSONType.object);
 		foreach(k, v; obj.object) {
 			string ret;
 			final switch(v.type) {
-				case JSON_TYPE.STRING:
+				case JSONType.string:
 					ret = v.str;
 				break;
-				case JSON_TYPE.UINTEGER:
+				case JSONType.uinteger:
 					ret = to!string(v.integer);
 				break;
-				case JSON_TYPE.INTEGER:
+				case JSONType.integer:
 					ret = to!string(v.integer);
 				break;
-				case JSON_TYPE.FLOAT:
+				case JSONType.float_:
 					ret = to!string(v.floating);
 				break;
-				case JSON_TYPE.OBJECT:
-				case JSON_TYPE.ARRAY:
+				case JSONType.object:
+				case JSONType.array:
 					enforce(0, "invalid session data");
 				break;
-				case JSON_TYPE.TRUE:
+				case JSONType.true_:
 					ret = "true";
 				break;
-				case JSON_TYPE.FALSE:
+				case JSONType.false_:
 					ret = "false";
 				break;
-				case JSON_TYPE.NULL:
+				case JSONType.null_:
 					ret = null;
 				break;
 			}
@@ -3930,7 +4003,7 @@ bool checkPassword(string saltedPasswordHash, string userSuppliedPassword) {
 /// implements the "table" format option. Works on structs and associative arrays (string[string][])
 Table structToTable(T)(Document document, T arr, string[] fieldsToSkip = null) if(isArray!(T) && !isAssociativeArray!(T)) {
 	auto t = cast(Table) document.createElement("table");
-	t.border = "1";
+	t.attrs.border = "1";
 
 	static if(is(T == string[string][])) {
 			string[string] allKeys;
@@ -3960,13 +4033,15 @@ Table structToTable(T)(Document document, T arr, string[] fieldsToSkip = null) i
 
 				odd = !odd;
 			}
-	} else static if(is(typeof(T[0]) == struct)) {
+	} else static if(is(typeof(arr[0]) == struct)) {
 		{
 			auto thead = t.addChild("thead");
 			auto tr = thead.addChild("tr");
-			auto s = arr[0];
-			foreach(idx, member; s.tupleof)
-				tr.addChild("th", s.tupleof[idx].stringof[2..$]);
+			if(arr.length) {
+				auto s = arr[0];
+				foreach(idx, member; s.tupleof)
+					tr.addChild("th", s.tupleof[idx].stringof[2..$]);
+			}
 		}
 
 		bool odd = true;
@@ -3974,7 +4049,16 @@ Table structToTable(T)(Document document, T arr, string[] fieldsToSkip = null) i
 		foreach(s; arr) {
 			auto tr = tbody.addChild("tr");
 			foreach(member; s.tupleof) {
-				tr.addChild("td", to!string(member));
+				static if(is(typeof(member) == URL[])) {
+					auto td = tr.addChild("td");
+					foreach(i, link; member) {
+						td.addChild("a", link.title.length ? link.title : to!string(i), link.url);
+						td.appendText(" ");
+					}
+
+				} else {
+					tr.addChild("td", Html(toHtml(member)));
+				}
 			}
 
 			if(odd)
@@ -3982,7 +4066,7 @@ Table structToTable(T)(Document document, T arr, string[] fieldsToSkip = null) i
 
 			odd = !odd;
 		}
-	} else static assert(0);
+	} else static assert(0, T.stringof);
 
 	return t;
 }

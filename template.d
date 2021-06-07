@@ -3,7 +3,7 @@ module minwiki.tem;
 import arsd.web;
 
 class Wikisite: ApiProvider {
-	override Element _getGenericContainer()
+	override Element _getGenericContainer(string s)
 		out(ret) {
 			assert(ret !is null);
 		}

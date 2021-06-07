@@ -20,9 +20,12 @@ MarkdownFlags	_mdflags = MarkdownFlags.backtickCodeBlocks|MarkdownFlags.disableU
  * Converts text into a web page. Functions should return an Element.
  */
 Element toHtml(string s) {
+	writeln("inside toHtml...");
 	auto d = new Document();
+	writeln("create fragment...");
 	Element f = d.createFragment();
 	f.innerHTML = s;
+	writeln("done making html...");
 	return f;
 }
 
@@ -34,9 +37,12 @@ Element toHtml(string s) {
  * You can set markdown flags (as found in markdown.d) in here.
  */
 Element renderPage(string name) {
+	writeln("rendering...");
 	string f = readText(name ~ ".md").strip;
 	string mdfile = changeLinks(`<a href="editpage?name=` ~ name ~ `">[Edit This Page]</a> <a href="backlinks?pagename=` ~ name ~ `">[Backlinks]</a><br><br>` ~ "\n\n" ~ f);
-	return mdfile.filterMarkdown(_mdflags).toHtml();
+	writeln("off to toHtml...");
+	writeln(mdfile.filterMarkdown(_mdflags).replace("<br />", "<br>").toHtml());
+	return mdfile.filterMarkdown(_mdflags).replace("<br />", "<br>").toHtml();
 }
 
 string mdToHtml(string s, string name) {
@@ -55,12 +61,14 @@ Element shellOutput(string cmd) {
 //class Test: ApiProvider {
 class Test: Wikisite {
 	export Element viewpage(string name) {
+		writeln("viewpage...");
 		// Note: This does a check for the existence of the directory
 		// Only creates it if it doesn't exist
 		mkdirRecurse(std.path.dirName(name));			
 		if (!exists(name ~ ".md")) {
 			executeShell(_editor ~ " " ~ name ~ ".md");
 		}
+		writeln("going to render...");
 		return renderPage(name);
 	}
 	
@@ -81,6 +89,7 @@ class Test: Wikisite {
 	}
 	
 	export Element index() {
+		writeln("in the index...");
 		if (!exists("index.md")) {
 			std.file.write("index.md", "# Index Page\n\nThis is the starting point for your wiki. Click the link above to edit.");
 		}
