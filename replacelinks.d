@@ -75,5 +75,8 @@ string changeLinks(string s) {
 }
 
 string replaceLinks(string s) {
-	return s.replaceAll(regex(`(\[#)(.*?)(\])(?!\()`), `<a href="viewpage?name=$2">$2</a>`).replaceAll(regex(`(^|\s)(#)(.*?)(\s|$)`, "m"), `$1<a href="tag?tagname=$3">#$3</a>`);
+	return s
+		.replaceAll(regex(`(\[#)(.*?)(\])(?!\()`), `<a href="viewpage?name=$2">$2</a>`)
+		.replaceAll(regex(`(\[#)(.*?)(\|)(.*?)(\])(?!\()`), `<a href="viewpage4?name=$2">$4</a>`)
+		.replaceAll(regex(`(^|\s)(#)(.*?)(\s|$)`, "m"), `$1<a href="tag?tagname=$3">#$3</a>`);
 }
