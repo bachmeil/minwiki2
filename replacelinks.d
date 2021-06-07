@@ -74,9 +74,26 @@ string changeLinks(string s) {
 	return result;
 }
 
-string replaceLinks(string s) {
+string convertLink(Captures!(string) m) {
+	string s = m.hit;
+	auto ind = s.indexOf("|");
+	if (ind < 0) {
+		return `<a href="viewpage?name=` ~ s[2..$-1].strip ~ `">` ~ s[2..$-1].strip ~ "</a>";
+	}
+	else {
+		string[] pieces = s.split("|");
+		return `<a href="viewpage?name=` ~ pieces[0][2..$-1].strip ~ `">` ~ pieces[1][0..$-1].strip ~ "</a>";
+	}
+}
+
+/*string replaceLinks(string s) {
 	return s
+		.replaceAll(regex(`(\[#)(^[\]]*?)(\|)(.*?)(\])(?!\()`), `<a href="viewpage4?name=$2">$4</a>`)
 		.replaceAll(regex(`(\[#)(.*?)(\])(?!\()`), `<a href="viewpage?name=$2">$2</a>`)
-		.replaceAll(regex(`(\[#)(.*?)(\|)(.*?)(\])(?!\()`), `<a href="viewpage4?name=$2">$4</a>`)
+		.replaceAll(regex(`(^|\s)(#)(.*?)(\s|$)`, "m"), `$1<a href="tag?tagname=$3">#$3</a>`);
+}*/
+
+string replaceLinks(string s) {
+	return replaceAll!(convertLink)(s, regex(`\[#.*?\](?!\()`))
 		.replaceAll(regex(`(^|\s)(#)(.*?)(\s|$)`, "m"), `$1<a href="tag?tagname=$3">#$3</a>`);
 }
