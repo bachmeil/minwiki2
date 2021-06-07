@@ -11,7 +11,7 @@ import std.file, std.path, std.process, std.stdio;
  * an already running editor, you'll have to close that editor
  * before you can continue.
  */
-enum _editor = "pluma ";
+enum _editor = "geany -i";
 
 // Change markdown parsing options here
 MarkdownFlags	_mdflags = MarkdownFlags.backtickCodeBlocks|MarkdownFlags.disableUnderscoreEmphasis;
@@ -58,8 +58,27 @@ Element shellOutput(string cmd) {
 	return toHtml(executeShell(cmd).output);
 }
 
+void hello(Cgi cgi) {
+	string data;
+	if (cgi.pathInfo == "/") {
+		if (!exists("index.md")) {
+			std.file.write("index.md", "# Index Page\n\nThis is the starting point for your wiki. Click the link above to edit.");
+		}
+		data = mdToHtml(readText("index.md"), "index");
+	}
+	else if (cgi.pathInfo == "/editpage") {
+		string name = cgi.get["name"];
+		executeShell(_editor ~ " " ~ setExtension(name, "md"));
+		cgi.setResponseLocation("viewpage?name=" ~ name);
+		data = mdToHtml(readText(setExtension(name, "md")), name);
+	}
+	cgi.write(data, true);
+}
+mixin GenericMain!hello;
+
+
 //class Test: ApiProvider {
-class Test: Wikisite {
+/*class Test: Wikisite {
 	export Element viewpage(string name) {
 		writeln("viewpage...");
 		// Note: This does a check for the existence of the directory
@@ -96,7 +115,7 @@ class Test: Wikisite {
 		return viewpage("index");
 	}
 }
-mixin FancyMain!Test;
+mixin FancyMain!Test;*/
 
 string fileLinks(string output) {
 	if (output.length == 0) {
