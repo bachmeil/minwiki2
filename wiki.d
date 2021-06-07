@@ -11,7 +11,7 @@ import std.file, std.path, std.process, std.stdio;
  * an already running editor, you'll have to close that editor
  * before you can continue.
  */
-enum _editor = "emacs ";
+enum _editor = "pluma ";
 
 // Change markdown parsing options here
 MarkdownFlags	_mdflags = MarkdownFlags.backtickCodeBlocks|MarkdownFlags.disableUnderscoreEmphasis;
@@ -64,6 +64,16 @@ class Test: Wikisite {
 		cgi.setResponseLocation("viewpage?name=" ~ name);
 		return renderPage(name);
 	}
+
+	export Element tag(string tagname) {
+		return toHtml("<h1>Tag: " ~ tagname ~ "</h1>\n" ~ fileLinks(executeShell(`grep -Rl '#` ~ tagname ~ `'`).output));
+	}
+
+	export Element backlinks(string pagename) {
+		string cmd = `grep -Rl '\[#` ~ pagename ~ `\]'`;
+		writeln(cmd);
+		return toHtml("<h1>Backlinks: " ~ pagename ~ "</h1>\n" ~ fileLinks(executeShell(cmd).output));
+	}
 	
 	export Element index() {
 		if (!exists("index.md")) {
@@ -73,3 +83,18 @@ class Test: Wikisite {
 	}
 }
 mixin FancyMain!Test;
+
+string fileLinks(string output) {
+	if (output.length == 0) {
+		return "";
+	} else {
+		string result;
+		string[] files = output.split("\n");
+		foreach(file; files) {
+			if (file.length > 0) {
+				result ~= `<a href="viewpage?name=` ~ stripExtension(file) ~ `">` ~ stripExtension(file) ~ "<a><br>\n";
+			}
+		}
+		return result;
+	}
+}
