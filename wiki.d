@@ -35,12 +35,12 @@ Element toHtml(string s) {
  */
 Element renderPage(string name) {
 	string f = readText(name ~ ".md").strip;
-	string mdfile = changeLinks(`<a href="editpage?name=` ~ name ~ `">[Edit This Page]</a> <a href="backlinks?pagename=` ~ name ~ `" target="_blank">[Backlinks]</a><br><br>` ~ "\n\n" ~ f);
+	string mdfile = changeLinks(`<a href="editpage?name=` ~ name ~ `">[Edit This Page]</a> <a href="backlinks?pagename=` ~ name ~ `">[Backlinks]</a><br><br>` ~ "\n\n" ~ f);
 	return mdfile.filterMarkdown(_mdflags).toHtml();
 }
 
 string mdToHtml(string s, string name) {
-	string mdfile = changeLinks(`<a href="editpage?name=` ~ name ~ `">[Edit This Page]</a> <a href="backlinks?pagename=` ~ name ~ `" target="_blank">[Backlinks]</a><br><br>` ~ "\n\n" ~ s);
+	string mdfile = changeLinks(`<a href="editpage?name=` ~ name ~ `">[Edit This Page]</a> <a href="backlinks?pagename=` ~ name ~ `">[Backlinks]</a><br><br>` ~ "\n\n" ~ s);
 	return mdfile.filterMarkdown(_mdflags);
 }
 
