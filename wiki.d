@@ -1,5 +1,5 @@
 import arsd.cgi;
-import minwiki.replacelinks;
+import minwiki.replacelinks, minwiki.staticsite;
 import dmarkdown.markdown;
 import std.file, std.path, std.process, std.stdio;
 
@@ -15,15 +15,6 @@ enum _editor = "geany -i";
 
 // Change markdown parsing options here
 MarkdownFlags	_mdflags = MarkdownFlags.backtickCodeBlocks|MarkdownFlags.disableUnderscoreEmphasis;
-
-string mdToHtml(string s, string name) {
-	string mdfile = changeLinks(`<a href="/">&#10070; Home</a>&nbsp;&nbsp;&nbsp;<a href="editpage?name=` ~ name ~ `">&#9998; Edit</a>&nbsp;&nbsp;&nbsp;<a href="backlinks?pagename=` ~ name ~ `">&#10149; Backlinks</a><br><br>` ~ "\n\n" ~ s);
-	return plaincss ~ mdfile.filterMarkdown(_mdflags);
-}
-
-string plainHtml(string s) {
-	return plaincss ~ s.filterMarkdown(_mdflags);
-}
 
 void hello(Cgi cgi) {
 	string data;
@@ -45,7 +36,7 @@ void hello(Cgi cgi) {
 		if (!exists(setExtension(name, "md"))) {
 			executeShell(_editor ~ " " ~ setExtension(name, "md"));
 		}
-		data = mdToHtml(readText(setExtension(name, "md")) ~ `<br><br><a href="/"><u>&#171; Index</u></a>`, name);
+		data = mdToHtml(readText(setExtension(name, "md")) ~ "\n\n" ~ `<br><a href="/"><u>&#171; Index</u></a>`, name);
 	}
 	else if (cgi.pathInfo == "/tag") {
 		string tagname = cgi.get["tagname"];
@@ -55,6 +46,11 @@ void hello(Cgi cgi) {
 		string pagename = cgi.get["pagename"];
 		string cmd = `grep -Rl '\[#` ~ pagename ~ `\]'`;
 		data = plainHtml(`<h1>Backlinks: <a href="viewpage?name=` ~ pagename ~ `">` ~ pagename ~ "</a></h1>\n" ~ fileLinks(executeShell(cmd).output) ~ "<hr><br>" ~ mdToHtml(readText(pagename ~ ".md"), pagename) ~ "<hr><br><br>");
+	}
+	else if (cgi.pathInfo == "/save") {
+		string name = cgi.get["name"];
+		std.file.write(setExtension(name, "html"), htmlPage(readText(setExtension(name, "md")), name));
+		cgi.setResponseLocation("/viewpage?name=" ~ name);
 	}
 	cgi.write(data, true);
 }
@@ -73,6 +69,20 @@ string fileLinks(string output) {
 		}
 		return result;
 	}
+}
+
+string mdToHtml(string s, string name) {
+	string mdfile = changeLinks(`<a href="/">&#10070; Home</a>&nbsp;&nbsp;&nbsp;<a href="editpage?name=` ~ name ~ `">&#9998; Edit</a>&nbsp;&nbsp;&nbsp;<a href="backlinks?pagename=` ~ name ~ `">&#10149; Backlinks</a>&nbsp;&nbsp;&nbsp;<a href="save?name=` ~ name ~ `">&#8681; Save As HTML</a><br><br>` ~ "\n\n" ~ s);
+	return plaincss ~ mdfile.filterMarkdown(_mdflags);
+}
+
+string htmlPage(string s, string name) {
+	string mdfile = staticLinks(`<a href="index.html">&#10070; Home</a>&nbsp;&nbsp;&nbsp;<a href="#backlinks">&#10149; Backlinks</a><br><br>` ~ "\n\n" ~ s);
+	return plaincss ~ mdfile.filterMarkdown(_mdflags);
+}
+
+string plainHtml(string s) {
+	return plaincss ~ s.filterMarkdown(_mdflags);
 }
 
 enum plaincss = `<style>
