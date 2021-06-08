@@ -17,7 +17,7 @@ enum _editor = "geany -i";
 MarkdownFlags	_mdflags = MarkdownFlags.backtickCodeBlocks|MarkdownFlags.disableUnderscoreEmphasis;
 
 string mdToHtml(string s, string name) {
-	string mdfile = changeLinks(`<a href="editpage?name=` ~ name ~ `">[Edit]</a> <a href="backlinks?pagename=` ~ name ~ `">[Backlinks]</a><br><br>` ~ "\n\n" ~ s);
+	string mdfile = changeLinks(`<a href="/">&#10070; Home</a>&nbsp;&nbsp;&nbsp;<a href="editpage?name=` ~ name ~ `">&#9998; Edit</a>&nbsp;&nbsp;&nbsp;<a href="backlinks?pagename=` ~ name ~ `">&#10149; Backlinks</a><br><br>` ~ "\n\n" ~ s);
 	return plaincss ~ mdfile.filterMarkdown(_mdflags);
 }
 
@@ -54,7 +54,7 @@ void hello(Cgi cgi) {
 	else if (cgi.pathInfo == "/backlinks") {
 		string pagename = cgi.get["pagename"];
 		string cmd = `grep -Rl '\[#` ~ pagename ~ `\]'`;
-		data = plainHtml(`<h1>Backlinks: <a href="viewpage?name=` ~ pagename ~ `">` ~ pagename ~ "</a></h1>\n" ~ fileLinks(executeShell(cmd).output) ~ "<br><hr>" ~ mdToHtml(readText(pagename ~ ".md"), pagename) ~ "<hr><br><br>");
+		data = plainHtml(`<h1>Backlinks: <a href="viewpage?name=` ~ pagename ~ `">` ~ pagename ~ "</a></h1>\n" ~ fileLinks(executeShell(cmd).output) ~ "<hr><br>" ~ mdToHtml(readText(pagename ~ ".md"), pagename) ~ "<hr><br><br>");
 	}
 	cgi.write(data, true);
 }
