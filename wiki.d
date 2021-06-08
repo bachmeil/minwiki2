@@ -1,7 +1,7 @@
 import arsd.cgi;
 import minwiki.replacelinks, minwiki.staticsite;
 import dmarkdown.markdown;
-import std.file, std.path, std.process, std.stdio;
+import std.file, std.path, std.process, std.regex, std.stdio;
 
 /*
  * Set the text editor used to edit/create pages.
@@ -52,6 +52,24 @@ void hello(Cgi cgi) {
 		std.file.write(setExtension(name, "html"), htmlPage(readText(setExtension(name, "md")), name));
 		cgi.setResponseLocation("/viewpage?name=" ~ name);
 	}
+	else if (cgi.pathInfo == "/staticsite") {
+		string[][string] tags;
+		foreach(f; listmd()) {
+			string txt = readText(setExtension(f, "md"));
+			std.file.write(setExtension(f, "html"), htmlPage(txt, f));
+			auto tagMatches = txt.matchAll(regex(`(?<=^|<br>|\s)(#)([a-zA-Z][a-zA-Z0-9]*?)(?=<br>|\s|$)`, "m"));
+			foreach(tag; tagMatches) {
+				string taghit = tag.hit[1..$];
+				if (taghit in tags) {
+					tags[taghit] ~= stripExtension(baseName(f));
+				} else {
+					tags[taghit] = [stripExtension(baseName(f))];
+				}
+			}
+		}
+		std.file.write("tags.html", tagsBody(tags));
+		data = `HTML files written to disk<br><br><a href="/">Index</a>`;
+	}
 	cgi.write(data, true);
 }
 mixin GenericMain!hello;
@@ -84,6 +102,40 @@ string htmlPage(string s, string name) {
 string plainHtml(string s) {
 	return plaincss ~ s.filterMarkdown(_mdflags);
 }
+
+string[] listmd() {
+    import std.algorithm, std.array;
+    return std.file.dirEntries(".", SpanMode.shallow)
+        .filter!(a => a.isFile)
+        .filter!(a => extension(a) == ".md")
+        .map!(a => std.path.baseName(a.name))
+        .array
+        .sort!"a < b"
+        .array;
+}
+
+string tagsBody(string[][string] tags) {
+	string result = `<body onhashchange="displaytag();">
+`;
+	foreach(tag; tags.keys) {
+		result ~= `<div id='` ~ tag ~ `' class='tag'>
+<h1>Tag: ` ~ tag ~ `</h1>
+`;
+		foreach(file; tags[tag]) {
+			result ~= `<a href="` ~ setExtension(file, "html") ~ `">` ~ stripExtension(file) ~ "</a>\n<br>";
+		}
+		result ~= "</div>";
+	}
+	return result ~ `</body>
+<script>function displaytag() {
+	for (el of document.getElementsByClassName('tag')) {
+		el.style = 'display: none;';
+	}
+	document.getElementById(location.hash.substr(1)).style.display = "inline";
+}
+displaytag();
+</script>`;
+}	
 
 enum plaincss = `<style>
 body { margin: auto; max-width: 800px; font-size: 120%; margin-top: 20px; }
