@@ -45,7 +45,7 @@ void hello(Cgi cgi) {
 		if (!exists(setExtension(name, "md"))) {
 			executeShell(_editor ~ " " ~ setExtension(name, "md"));
 		}
-		data = mdToHtml(readText(setExtension(name, "md")) ~ `<br><br><a href="/">[&#171; Index]</a>`, name);
+		data = mdToHtml(readText(setExtension(name, "md")) ~ `<br><br><a href="/"><u>&#171; Index</u></a>`, name);
 	}
 	else if (cgi.pathInfo == "/tag") {
 		string tagname = cgi.get["tagname"];
