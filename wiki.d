@@ -55,8 +55,11 @@ void hello(Cgi cgi) {
 	else if (cgi.pathInfo == "/staticsite") {
 		string[][string] tags;
 		foreach(f; listmd()) {
+			string pagename = stripExtension(f);
 			string txt = readText(setExtension(f, "md"));
-			std.file.write(setExtension(f, "html"), htmlPage(txt, f));
+			string cmd = `grep -Rl '\[#` ~ pagename ~ `\]'`;
+			string bl = "<h3 style='font-size: 89%;'>Backlinks</h3>\n" ~ fileLinks(executeShell(cmd).output) ~ "<br><br><br>";
+			std.file.write(setExtension(f, "html"), htmlPage(txt, f) ~ bl);
 			auto tagMatches = txt.matchAll(regex(`(?<=^|<br>|\s)(#)([a-zA-Z][a-zA-Z0-9]*?)(?=<br>|\s|$)`, "m"));
 			foreach(tag; tagMatches) {
 				string taghit = tag.hit[1..$];
@@ -95,7 +98,7 @@ string mdToHtml(string s, string name) {
 }
 
 string htmlPage(string s, string name) {
-	string mdfile = staticLinks(`<a href="index.html">&#10070; Home</a>&nbsp;&nbsp;&nbsp;<a href="#backlinks">&#10149; Backlinks</a><br><br>` ~ "\n\n" ~ s);
+	string mdfile = staticLinks(`<a href="index.html">&#10070; Home</a><br><br>` ~ "\n\n" ~ s);
 	return plaincss ~ mdfile.filterMarkdown(_mdflags);
 }
 
