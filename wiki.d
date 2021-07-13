@@ -73,6 +73,12 @@ void hello(Cgi cgi) {
 		std.file.write("tags.html", tagsBody(tags));
 		data = `HTML files written to disk<br><br><a href="/">Index</a>`;
 	}
+	else if (cgi.pathInfo == "/bookmark") {
+		string url = cgi.get["url"];
+		string desc = cgi.get["desc"];
+		std.file.append("links.md", "\n- [" ~ desc ~ "](" ~ url ~ ")");
+		data = "Added " ~ url ~ ": " ~ desc ~ " to the links file.";
+	}
 	cgi.write(data, true);
 }
 mixin GenericMain!hello;
