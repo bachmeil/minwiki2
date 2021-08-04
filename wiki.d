@@ -57,10 +57,22 @@ void hello(Cgi cgi) {
     string day = ct.toISOString()[0..8];
     string fn = "daily/" ~ setExtension(day, "md");
 		if (!exists(fn)) {
-      std.file.write(fn, "# " ~ day[0..4] ~ "-" ~ day[4..6] ~ "-" ~ day[6..8] ~ "\n\n");
+      string link = `<a href='/viewpage?name=daily/` ~ day ~ `'>` ~ day[0..4] ~ "/" ~ day[4..6] ~ "/" ~ day[6..8] ~ "<br>\n";
+      string currentPages = readText("daily/index.html");  
+      std.file.write("daily/index.html", link);
+      std.file.write(fn, "# " ~ day[0..4] ~ "/" ~ day[4..6] ~ "/" ~ day[6..8] ~ "\n\n");
 			executeShell(_editor ~ " " ~ fn);
 		}
-		data = mdToHtml(readText(fn) ~ "\n\n" ~ `<br><a href="/"><u>&#171; Index</u></a>`, fn);
+		data = mdToHtml(readText(fn) ~ "\n\n" ~ `<br><a href="/dailyindex"><u>&#171; Daily Page Index</u></a>`, fn);
+  }
+  else if (cgi.pathInfo == "/dailyindex") {
+    if (!exists("daily/index.html")) {
+      std.file.write("daily/index.html", "");
+      data = "No pages currently in your daily pages directory. You can <a href='/daily'>create today's by clicking here</a>.";
+    }
+    else {
+      data = plaincss ~ "\n\n<h1>Daily Pages</h1>\n" ~ readText("daily/index.html");
+    }
   }
 	else if (cgi.pathInfo == "/staticsite") {
 		string[][string] tags;
