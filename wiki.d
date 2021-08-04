@@ -1,7 +1,7 @@
 import arsd.cgi;
 import minwiki.replacelinks, minwiki.staticsite;
 import dmarkdown.markdown;
-import std.file, std.path, std.process, std.regex, std.stdio;
+import std.datetime, std.file, std.path, std.process, std.regex, std.stdio;
 
 /*
  * Set the text editor used to edit/create pages.
@@ -52,6 +52,16 @@ void hello(Cgi cgi) {
 		std.file.write(setExtension(name, "html"), htmlPage(readText(setExtension(name, "md")), name));
 		cgi.setResponseLocation("/viewpage?name=" ~ name);
 	}
+  else if (cgi.pathInfo == "/daily") {
+    SysTime ct = Clock.currTime();
+    string day = ct.toISOString()[0..8];
+    string fn = "daily/" ~ setExtension(day, "md");
+		if (!exists(fn)) {
+      std.file.write(fn, "# " ~ day[0..4] ~ "-" ~ day[4..6] ~ "-" ~ day[6..8] ~ "\n\n");
+			executeShell(_editor ~ " " ~ fn);
+		}
+		data = mdToHtml(readText(fn) ~ "\n\n" ~ `<br><a href="/"><u>&#171; Index</u></a>`, fn);
+  }
 	else if (cgi.pathInfo == "/staticsite") {
 		string[][string] tags;
 		foreach(f; listmd()) {
