@@ -21,7 +21,7 @@ enum _editor = "geany -i";
 void hello(Cgi cgi) {
 	string data;
   auto pi = cgi.pathInfo.decode;
-	if (pi == "/") {
+	if ( (pi == "/") | (pi == "/index") ) {
 		if (!exists("index.md")) {
 			std.file.write("index.md", "# Index Page\n\nThis is the starting point for your wiki. Click the link above to edit.");
 		}
@@ -31,7 +31,7 @@ void hello(Cgi cgi) {
 		string name = pi[6..$];
 		executeShell(_editor ~ " " ~ setExtension(name, "md"));
 		cgi.setResponseLocation("/wiki/" ~ name);
-		data = readText(setExtension(name, "md")).toHtml();
+		//~ data = readText(setExtension(name, "md")).toHtml();
 	}
   /* You can use a wiki link *inside* the link
    * If it is [[link]] it will treat it as a wiki link.
@@ -53,20 +53,16 @@ void hello(Cgi cgi) {
       mkdirRecurse(std.path.dirName(name));
 			executeShell(_editor ~ " " ~ setExtension(name, "md"));
 		}
-		data = readText(setExtension(name, "md")).toHtml();
+		data = readText(setExtension(name, "md")).wikipageHtml(name);
 	}
   else if (cgi.pathInfo == "/monthly") {
     SysTime ct = Clock.currTime();
-    string day = ct.toISOString()[0..8];
-    string fn = "daily/" ~ setExtension(day, "md");
+    string m = ct.toISOString()[0..6];
+    string fn = "monthly/" ~ m[0..4] ~ "-" ~ m[4..6];
 		if (!exists(fn)) {
-      string link = `<a href='/viewpage?name=daily/` ~ day ~ `'>` ~ day[0..4] ~ "/" ~ day[4..6] ~ "/" ~ day[6..8] ~ "<br>\n";
-      string currentPages = readText("daily/index.html");  
-      std.file.write("daily/index.html", link);
-      std.file.write(fn, "# " ~ day[0..4] ~ "/" ~ day[4..6] ~ "/" ~ day[6..8] ~ "\n\n");
-			executeShell(_editor ~ " " ~ fn);
+      mkdirRecurse(std.path.dirName("monthly"));
 		}
-		data = mdToHtml(readText(fn) ~ "\n\n" ~ `<br><a href="/dailyindex"><u>&#171; Daily Page Index</u></a>`, fn);
+    cgi.setResponseLocation("/wiki/" ~ fn);
   }
   //~ else if (cgi.pathInfo == "/dailyindex") {
     //~ if (!exists("daily/index.html")) {
@@ -114,6 +110,16 @@ mixin GenericMain!hello;
 string toHtml(string s) {
   return readText("template/top.html").replace("<style>\n</style>", "<style>\n" ~ readText("template/style.css").strip ~ "\n</style>") 
     ~ convertMarkdownToHTML(s, MarkdownFlag.dialectCustom) ~ readText("template/bottom.html");
+}
+
+string wikipageHtml(string s, string name) {
+  return readText("template/top.html").replace("<style>\n</style>", 
+    "<style>\n" ~ readText("template/style.css").strip ~ "\n</style>\n")
+    ~ `<a href="/edit/` ~ name ~ `">Edit</a>`
+    ~ "<body>\n"
+    ~ convertMarkdownToHTML(s, MarkdownFlag.dialectCustom) 
+    ~ "\n</body>" 
+    ~ readText("template/bottom.html");
 }
 
 
