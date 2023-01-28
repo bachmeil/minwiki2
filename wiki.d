@@ -15,9 +15,6 @@ import std.datetime, std.file, std.path, std.process, std.stdio, std.uri;
  */
 enum _editor = "geany -i";
 
-// Change markdown parsing options here
-// MarkdownFlags	_mdflags = MarkdownFlags.backtickCodeBlocks|MarkdownFlags.disableUnderscoreEmphasis;
-
 void hello(Cgi cgi) {
 	string data;
   auto pi = cgi.pathInfo.decode;
@@ -64,36 +61,14 @@ void hello(Cgi cgi) {
 		}
     cgi.setResponseLocation("/wiki/" ~ fn);
   }
-  //~ else if (cgi.pathInfo == "/dailyindex") {
-    //~ if (!exists("daily/index.html")) {
-      //~ std.file.write("daily/index.html", "");
-      //~ data = "No pages currently in your daily pages directory. You can <a href='/daily'>create today's by clicking here</a>.";
-    //~ }
-    //~ else {
-      //~ data = plaincss ~ "\n\n<h1>Daily Pages</h1>\n" ~ readText("daily/index.html");
-    //~ }
-  //~ }
-	//~ else if (cgi.pathInfo == "/staticsite") {
-		//~ string[][string] tags;
-		//~ foreach(f; listmd()) {
-			//~ string pagename = stripExtension(f);
-			//~ string txt = readText(setExtension(f, "md"));
-			//~ string cmd = `grep -Rl '\[#` ~ pagename ~ `\]'`;
-			//~ string bl = "<h3 style='font-size: 89%;'>Backlinks</h3>\n" ~ fileLinks(executeShell(cmd).output) ~ "<br><br><br>";
-			//~ std.file.write(setExtension(f, "html"), htmlPage(txt, f) ~ bl);
-			//~ auto tagMatches = txt.matchAll(regex(`(?<=^|<br>|\s)(#)([a-zA-Z][a-zA-Z0-9]*?)(?=<br>|\s|$)`, "m"));
-			//~ foreach(tag; tagMatches) {
-				//~ string taghit = tag.hit[1..$];
-				//~ if (taghit in tags) {
-					//~ tags[taghit] ~= stripExtension(baseName(f));
-				//~ } else {
-					//~ tags[taghit] = [stripExtension(baseName(f))];
-				//~ }
-			//~ }
-		//~ }
-		//~ std.file.write("tags.html", tagsBody(tags));
-		//~ data = `HTML files written to disk<br><br><a href="/">Index</a>`;
-	//~ }
+  else if (pi.startsWith("/monthly-")) {
+  }
+  else if (pi.startsWith("/monthly+")) {
+  }
+  else if (pi == "/fullindex") {
+    data = pageIndex();
+  }
+  /* This is nice, but put it in dlangdb rather than this format */
 	//~ else if (cgi.pathInfo == "/bookmark") {
 		//~ string url = cgi.get["url"];
 		//~ string desc = cgi.get["desc"];
@@ -117,7 +92,7 @@ string wikipageHtml(string s, string name) {
     "<style>\n" ~ readText("template/style.css").strip ~ "\n</style>\n")
     ~ `<div class="topmenu">`
     ~ `<a href="/">Home</a> `
-    ~ `<a href="/">Wiki Index</a> `
+    ~ `<a href="/fullindex">Wiki Index</a> `
     ~ `<a href="/monthly">This Month</a> `
     ~ `<a href="/edit/` ~ name ~ `">Edit</a>`
     ~ "</div>"
@@ -127,6 +102,20 @@ string wikipageHtml(string s, string name) {
     ~ readText("template/bottom.html");
 }
 
+string pageIndex() {
+  import std.algorithm;
+  return readText("template/top.html").replace("<style>\n</style>", 
+    "<style>\n" ~ std.string.strip(readText("template/style.css")) ~ "\n</style>\n")
+    ~ `<div class="topmenu">`
+    ~ `<a href="/">Home</a> `
+    ~ `<a href="/monthly">This Month</a> `
+    ~ "</div>"
+    ~ "<div class=\"content\">\n"
+    ~ convertMarkdownToHTML("# Index of all wiki pages\n\n- " 
+        ~ listmd.map!(a => "[" ~ a ~ "](/wiki/" ~ a ~ ")").join("\n- "), MarkdownFlag.dialectCustom) 
+    ~ "\n</div>" 
+    ~ readText("template/bottom.html");
+}
 
 //~ string fileLinks(string output) {
 	//~ if (output.length == 0) {
@@ -157,16 +146,16 @@ string wikipageHtml(string s, string name) {
 	//~ return plaincss ~ s.filterMarkdown(_mdflags);
 //~ }
 
-//~ string[] listmd() {
-    //~ import std.algorithm, std.array;
-    //~ return std.file.dirEntries(".", SpanMode.shallow)
-        //~ .filter!(a => a.isFile)
-        //~ .filter!(a => extension(a) == ".md")
-        //~ .map!(a => std.path.baseName(a.name))
-        //~ .array
-        //~ .sort!"a < b"
-        //~ .array;
-//~ }
+string[] listmd() {
+    import std.algorithm, std.array;
+    return std.file.dirEntries(".", SpanMode.shallow)
+        .filter!(a => a.isFile)
+        .filter!(a => extension(a) == ".md")
+        .map!(a => a.name)
+        .array
+        .sort!"a < b"
+        .array;
+}
 
 //~ string tagsBody(string[][string] tags) {
 	//~ string result = `<body onhashchange="displaytag();">
