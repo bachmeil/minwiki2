@@ -22,7 +22,7 @@ void hello(Cgi cgi) {
 		if (!exists("index.md")) {
 			std.file.write("index.md", "# Index Page\n\nThis is the starting point for your wiki. Click the link above to edit.");
 		}
-    data = readText("index.md").toHtml();
+    cgi.setResponseLocation("/wiki/index");
 	}
 	else if (pi.startsWith("/edit/")) {
 		string name = pi[6..$];
