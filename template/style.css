@@ -5,6 +5,10 @@
   margin-bottom: 125px;
 }
 
+.topmenu {
+  font-family: Ubuntu, sans;
+}
+
 pre {
   border: 1px solid brown;
   border-radius: 6px;
