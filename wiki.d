@@ -112,7 +112,7 @@ string pageIndex() {
     ~ "</div>"
     ~ "<div class=\"content\">\n"
     ~ convertMarkdownToHTML("# Index of all wiki pages\n\n- " 
-        ~ listmd.map!(a => "[" ~ a ~ "](/wiki/" ~ a ~ ")").join("\n- "), MarkdownFlag.dialectCustom) 
+        ~ listmd.map!(a => "[" ~ stripExtension(a) ~ "](/wiki/" ~ stripExtension(a) ~ ")").join("\n- "), MarkdownFlag.dialectCustom) 
     ~ "\n</div>" 
     ~ readText("template/bottom.html");
 }
