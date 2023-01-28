@@ -1,0 +1,21 @@
+body {
+  max-width: 760px;
+  margin: auto;
+  margin-top: 40px;
+  margin-bottom: 125px;
+}
+
+pre {
+  border: 1px solid brown;
+  border-radius: 6px;
+  font-family: Source Code Pro, Consolas, mono;
+  padding: 6px;
+}
+
+code {
+  font-family: Source Code Pro, Consolas, mono;
+}
+
+h1, h2, h3 {
+  font-family: Ubuntu, Georgia, sans-serif;
+}
