@@ -115,10 +115,12 @@ string toHtml(string s) {
 string wikipageHtml(string s, string name) {
   return readText("template/top.html").replace("<style>\n</style>", 
     "<style>\n" ~ readText("template/style.css").strip ~ "\n</style>\n")
+    ~ `<div class="topmenu">`
     ~ `<a href="/edit/` ~ name ~ `">Edit</a>`
-    ~ "<body>\n"
+    ~ "</div>"
+    ~ "<div class=\"content\">\n"
     ~ convertMarkdownToHTML(s, MarkdownFlag.dialectCustom) 
-    ~ "\n</body>" 
+    ~ "\n</div>" 
     ~ readText("template/bottom.html");
 }
 
