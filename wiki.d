@@ -116,6 +116,8 @@ string wikipageHtml(string s, string name) {
   return readText("template/top.html").replace("<style>\n</style>", 
     "<style>\n" ~ readText("template/style.css").strip ~ "\n</style>\n")
     ~ `<div class="topmenu">`
+    ~ `<a href="/">Wiki Index</a> `
+    ~ `<a href="/monthly">This Month</a>`
     ~ `<a href="/edit/` ~ name ~ `">Edit</a>`
     ~ "</div>"
     ~ "<div class=\"content\">\n"
