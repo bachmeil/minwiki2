@@ -103,6 +103,14 @@ string wikipageHtml(string s, string name) {
 }
 
 string pageIndex() {
+  string cleanFilename(string s) {
+    if (s.startsWith("./")) { 
+      return stripExtension(s[2..$]); 
+    } else { 
+      return stripExtension(s); 
+    }
+  }
+  
   import std.algorithm;
   return readText("template/top.html").replace("<style>\n</style>", 
     "<style>\n" ~ std.string.strip(readText("template/style.css")) ~ "\n</style>\n")
@@ -112,7 +120,9 @@ string pageIndex() {
     ~ "</div>"
     ~ "<div class=\"content\">\n"
     ~ convertMarkdownToHTML("# Index of all wiki pages\n\n- " 
-        ~ listmd.map!(a => "[" ~ stripExtension(a) ~ "](/wiki/" ~ stripExtension(a) ~ ")").join("\n- "), MarkdownFlag.dialectCustom) 
+        ~ listmd.map!(a => cleanFilename(a))
+          .map!(a => "[" ~ a ~ "](/wiki/" ~ a ~ ")")
+          .join("\n- "), MarkdownFlag.dialectCustom) 
     ~ "\n</div>" 
     ~ readText("template/bottom.html");
 }
@@ -148,9 +158,8 @@ string pageIndex() {
 
 string[] listmd() {
     import std.algorithm, std.array;
-    return std.file.dirEntries(".", SpanMode.shallow)
+    return std.file.dirEntries(".", "*.md", SpanMode.breadth)
         .filter!(a => a.isFile)
-        .filter!(a => extension(a) == ".md")
         .map!(a => a.name)
         .array
         .sort!"a < b"
