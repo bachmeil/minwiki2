@@ -30,6 +30,14 @@ void hello(Cgi cgi) {
 		cgi.setResponseLocation("/wiki/" ~ name);
 		//~ data = readText(setExtension(name, "md")).toHtml();
 	}
+  else if (pi == "/updatenote") {
+    auto notename = cgi.post["notename"];
+    auto content = cgi.post.get("content", "No field named content");
+    std.file.write(setExtension(notename, "md"), content);
+    cgi.setResponseLocation("/wiki/" ~ notename);
+  }
+  else if (pi == "/form") {
+    data = readText("easymdetest.html");
   /* You can use a wiki link *inside* the link
    * If it is [[link]] it will treat it as a wiki link.
    * This keeps the traditional wiki link syntax without
@@ -39,6 +47,7 @@ void hello(Cgi cgi) {
    * that would prevent the use of directories named wiki. 
    * 
    * Example: [How to make a million dollars a day]([[fraud/crackpot]]) */
+  }
   else if (pi.endsWith("]]")) {
     auto ind = pi.lastIndexOf("[[") + 2;
     string name = pi[ind..$-2];
