@@ -18,6 +18,7 @@ enum _editor = "geany -i";
 void hello(Cgi cgi) {
 	string data;
   auto pi = cgi.pathInfo.decode;
+  writeln("pi: ", pi);
 	if ( (pi == "/") | (pi == "/index") ) {
 		if (!exists("index.md")) {
 			std.file.write("index.md", "# Index Page\n\nThis is the starting point for your wiki. Click the link above to edit.");
@@ -26,13 +27,22 @@ void hello(Cgi cgi) {
 	}
 	else if (pi.startsWith("/edit/")) {
 		string name = pi[6..$];
-		executeShell(_editor ~ " " ~ setExtension(name, "md"));
-		cgi.setResponseLocation("/wiki/" ~ name);
-		//~ data = readText(setExtension(name, "md")).toHtml();
+    string filename = setExtension(name, "md");
+    if (exists(filename)) {
+      data = readText("easymdetest.html")
+        .replace("<Put note name here>", name)
+        .replace("<Put note content here>", 
+          readText(filename).replace("`", "\\`"));
+    } else {
+      data = readText("easymdetest.html")
+        .replace("<Put note name here>", name)
+        .replace("<Put note content here>", "");
+    }
 	}
   else if (pi == "/updatenote") {
     auto notename = cgi.post["notename"];
     auto content = cgi.post.get("content", "No field named content");
+    writeln("Note name: ", notename);
     std.file.write(setExtension(notename, "md"), content);
     cgi.setResponseLocation("/wiki/" ~ notename);
   }
