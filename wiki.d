@@ -29,12 +29,12 @@ void hello(Cgi cgi) {
 		string name = pi[6..$];
     string filename = setExtension(name, "md");
     if (exists(filename)) {
-      data = readText("easymdetest.html")
+      data = readText("edittemplate.html")
         .replace("<Put note name here>", name)
         .replace("<Put note content here>", 
           readText(filename).replace("`", "\\`"));
     } else {
-      data = readText("easymdetest.html")
+      data = readText("edittemplate.html")
         .replace("<Put note name here>", name)
         .replace("<Put note content here>", "");
     }

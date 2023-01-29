@@ -1,0 +1,107 @@
+<script src="https://unpkg.com/easymde/dist/easymde.min.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/easymde/dist/easymde.min.css">
+<style>
+  .content {
+    max-width: 800px;
+    margin: auto;
+  }
+  
+  .cm-s-easymde .cm-header-1 {
+    font-size: 1em;
+  }
+
+  .cm-s-easymde .cm-header-2 {
+    font-size: 1em;
+  }
+
+  .cm-s-easymde .cm-header-3 {
+    font-size: 1em;
+  }
+
+  .cm-s-easymde .cm-header-4 {
+    font-size: 1em;
+  }
+
+  .cm-s-easymde .cm-header-5 {
+    font-size: 1em;
+  }
+
+  .cm-s-easymde .cm-header-6 {
+    font-size: 1em;
+  }
+
+  .cm-header, .cm-strong {
+    font-weight: normal;
+    font-family: inherit;
+  }
+  
+  .cm-em {
+    font-style: normal;
+  }
+  
+  .cm-s-easymde .cm-link {
+    color: inherit;
+  }
+  
+  .cm-link {
+    text-decoration: none;
+  }
+  
+  .cm-s-easymde .cm-url {
+    color: inherit;
+  }
+  
+  .cm-s-easymde .cm-quote {
+    color: inherit;
+    font-style: normal;
+  }
+  
+  .CodeMirror pre.CodeMirror-line, .CodeMirror pre.CodeMirror-line-like {
+    font-family: Consolas, Source Code Pro, Ubuntu, mono;
+  }
+  
+  .cm-s-easymde .cm-comment {
+    background: inherit;
+  }
+  
+  .savebutton {
+    font-size: 1rem;
+    font-family: sans;
+    font-weight: 400;
+    background-color: inherit;
+    color: seagreen;
+    border: solid;
+    border-radius: 6px;
+    border-width: 1px;
+    border-color: silver;
+    margin-bottom: 5px;
+  }
+</style>
+
+<div class="content">
+	<button id="thebutton" class="savebutton" onclick="submitNote()">Save</button><br> 
+	<textarea></textarea><br><br>
+</div>
+
+<form id="hiddenform" method="POST" action="/updatenote">
+  <textarea id="content" name="content" style="display: none"></textarea>
+  <input type="hidden" id="notename" name="notename" value="<Put note name here>">
+</form>
+
+<script>
+// This creates the editor in the first textarea, with the specified 
+// configuration, and then inserts the starter text into the first textarea.
+var easyMDE = new EasyMDE({ 
+	maxHeight: "70%",
+	spellChecker: false,
+});
+
+easyMDE.value(`<Put note content here>`);
+</script>
+
+<script>
+  function submitNote() {
+    document.getElementById("content").value = easyMDE.value();
+    document.getElementById("hiddenform").submit();
+  }
+</script>
