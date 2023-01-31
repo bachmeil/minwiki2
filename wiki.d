@@ -87,6 +87,9 @@ void hello(Cgi cgi) {
   else if (pi == "/fullindex") {
     data = pageIndex();
   }
+  else if (pi == "/push") {
+    data = executeShell("git add .;git commit -am 'nm';git pull;git push").output;
+  }
   /* This is nice, but put it in dlangdb rather than this format */
 	//~ else if (cgi.pathInfo == "/bookmark") {
 		//~ string url = cgi.get["url"];
